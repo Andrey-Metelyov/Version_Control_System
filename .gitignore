@@ -1,0 +1,6 @@
+# Project exclude paths
+/.gradle/
+/Version Control System/task/build/
+/Version Control System/task/out/
+/Version Control System/task/out/production/classes/
+/Version Control System/task/out/test/classes/
