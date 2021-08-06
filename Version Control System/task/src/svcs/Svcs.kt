@@ -82,7 +82,6 @@ class Svcs {
                 files.add(filename)
                 index.toPath().writeLines(files)
                 System.err.println("${file.absoluteFile} size: ${file.toPath().fileSize()}")
-//                index.writeText(files.joinToString(System.out.linese))
                 println("The file '${filename}' is tracked.")
             } else {
                 println("Can't find '$filename'.")
@@ -113,6 +112,11 @@ class Svcs {
             log.appendText(hash + System.lineSeparator() +
                     username + System.lineSeparator() +
                     message + System.lineSeparator())
+            val newCommitDir = File(commitsDir, hash)
+            for (filename in files) {
+                val file = File(filename)
+                file.copyTo(File(newCommitDir, filename))
+            }
             println("Changes are committed.")
         } else {
             println("Nothing to commit.")
