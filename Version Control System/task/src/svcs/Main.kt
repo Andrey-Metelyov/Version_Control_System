@@ -14,7 +14,7 @@ fun main(args: Array<String>) {
         "add" -> svcs.add(arguments)
         "log" -> svcs.log(arguments)
         "commit" -> svcs.commit(arguments)
-        "checkout" -> println("Restore a file.")
+        "checkout" -> svcs.chechout(arguments)
         else -> println("'$argument' is not a SVCS command.")
     }
 }

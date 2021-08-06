@@ -130,11 +130,68 @@ class TestStage3 : StageTest<String>() {
 
     @DynamicTest
     fun checkoutTest(): CheckResult {
+        val file1 = File("first_file.txt")
+        val file2 = File("second_file.txt")
+        val untrackedFile = File("untracked_file.txt")
+
+        file1.createNewFile()
+        file2.createNewFile()
+        untrackedFile.createNewFile()
+
         try {
-            checkOutputString(TestedProgram().start("checkout"), "Restore a file.")
+            val username = "TestUserName"
+
+            TestedProgram().start("config", username)
+            TestedProgram().start("add", file1.name)
+            TestedProgram().start("add", file2.name)
+
+            val initialContentFile1 = "some text in the first file"
+            val initialContentFile2 = "some text in the second file"
+            val contentUntrackedFile = "some text for the untracked file"
+
+            file1.writeText(initialContentFile1)
+            file2.writeText(initialContentFile2)
+            untrackedFile.writeText(contentUntrackedFile)
+
+            TestedProgram().start("commit", "First commit")
+
+
+            val changedContentFile1 = "some changed text in the first file"
+            val changedContentFile2 = "some changed text in the second file"
+            file1.writeText(changedContentFile1)
+            file2.writeText(changedContentFile2)
+
+            TestedProgram().start("commit", "Second commit")
+
+            checkOutputString(TestedProgram().start("checkout"), "Commit id was not passed.")
+            checkOutputString(TestedProgram().start("checkout", "wrongId"), "Commit does not exist.")
+
+            val firstCommitHash = parseCommitHashes(TestedProgram().start("log")).last()
+
+            checkOutputString(
+                    TestedProgram().start("checkout", firstCommitHash),
+                    "Switched to commit $firstCommitHash."
+            )
+
+            if (file1.readText() != initialContentFile1 || file2.readText() != initialContentFile2) {
+                throw WrongAnswer(
+                        "Wrong content of the tracked files after checkout"
+                )
+            }
+
+            if (untrackedFile.readText() != contentUntrackedFile) {
+                throw WrongAnswer(
+                        "Your program changed untracked file"
+                )
+            }
+
         } finally {
             deleteVcsDir()
+            file1.delete()
+            file2.delete()
+            untrackedFile.delete()
         }
+
         return CheckResult.correct()
     }
 
@@ -190,7 +247,7 @@ class TestStage3 : StageTest<String>() {
         }
     }
 
-    private fun parseCommitHashes(logOutput: String) : List<String>{
+    private fun parseCommitHashes(logOutput: String): List<String> {
         val regex = Regex(
                 "commit ([^\\s]+)", RegexOption.IGNORE_CASE
         )
@@ -203,7 +260,7 @@ class TestStage3 : StageTest<String>() {
 
         if (commitHashes.size != commitHashes.toSet().size) {
             throw WrongAnswer(
-                    "Commit IDs are not unique"
+                    "Commit ids are not unique"
             )
         }
     }

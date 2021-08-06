@@ -2,7 +2,9 @@ package svcs
 
 import java.io.File
 import java.security.MessageDigest
+import kotlin.io.path.copyTo
 import kotlin.io.path.fileSize
+import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.writeLines
 
 fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }
@@ -134,6 +136,27 @@ class Svcs {
                 println(commit.message)
                 println()
             }
+        }
+    }
+
+    fun chechout(args: Array<String>) {
+//        println("Restore a file.")
+        if (args.isEmpty()) {
+            println("Commit id was not passed.")
+            return
+        }
+        val commitId = args[0]
+        val commit = commits.find { it.commitId == commitId }
+        if (commit == null) {
+            println("Commit does not exist.")
+        } else {
+            val commitDir = File(commitsDir, commit.commitId).toPath()
+            val files = commitDir.listDirectoryEntries()
+            for (file in files) {
+                val targetFile = File(file.toFile().name)
+                file.copyTo(targetFile.toPath(), overwrite = true)
+            }
+            println("Switched to commit ${commit.commitId}.")
         }
     }
 }
