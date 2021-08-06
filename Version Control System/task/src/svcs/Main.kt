@@ -12,8 +12,8 @@ fun main(args: Array<String>) {
     when (val argument = args[0]) {
         "config" -> svcs.config(arguments)
         "add" -> svcs.add(arguments)
-        "log" -> println("Show commit logs.")
-        "commit" -> println("Save changes.")
+        "log" -> svcs.log(arguments)
+        "commit" -> svcs.commit(arguments)
         "checkout" -> println("Restore a file.")
         else -> println("'$argument' is not a SVCS command.")
     }

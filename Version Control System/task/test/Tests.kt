@@ -7,7 +7,7 @@ import java.io.File
 import kotlin.random.Random
 
 
-class TestStage2 : StageTest<String>() {
+class TestStage3 : StageTest<String>() {
     @DynamicTest
     fun helpPageTest(): CheckResult {
         try {
@@ -66,22 +66,65 @@ class TestStage2 : StageTest<String>() {
     }
 
     @DynamicTest
-    fun logTest(): CheckResult {
-        try {
-            checkOutputString(TestedProgram().start("log"), "Show commit logs.")
-        } finally {
-            deleteVcsDir()
-        }
-        return CheckResult.correct()
-    }
+    fun commitAndLogTest(): CheckResult {
+        val file1 = File("first_file.txt")
+        val file2 = File("second_file.txt")
 
-    @DynamicTest
-    fun commitTest(): CheckResult {
+        file1.writeText("some test data for the first file")
+        file2.writeText("some test data for the second file")
+
         try {
-            checkOutputString(TestedProgram().start("commit"), "Save changes.")
+            val username = "TestUserName"
+
+            TestedProgram().start("config", username)
+            TestedProgram().start("add", file1.name)
+            TestedProgram().start("add", file2.name)
+
+            checkOutputString(TestedProgram().start("log"), "No commits yet.")
+            checkOutputString(TestedProgram().start("commit"), "Message was not passed.")
+
+            checkOutputString(TestedProgram().start("commit", "Test message"), "Changes are committed.")
+
+            var got = TestedProgram().start("log")
+            var want = "commit [commit id]\n" +
+                    "Author: $username\n" +
+                    "Test message"
+
+            var regex = Regex(
+                    "commit [^\\s]+\n" +
+                            "Author: $username\n" +
+                            "Test message", RegexOption.IGNORE_CASE
+            )
+            checkLogOutput(got, want, regex)
+
+            checkOutputString(TestedProgram().start("commit", "Test message2"), "Nothing to commit.")
+
+            file2.appendText("some text")
+            checkOutputString(TestedProgram().start("commit", "Test message3"), "Changes are committed.")
+
+            got = TestedProgram().start("log")
+            want = "commit [commit id]\n" +
+                    "Author: $username\n" +
+                    "Test message3\n\n" +
+                    "commit [commit id]\n" +
+                    "Author: $username\n" +
+                    "Test message"
+            regex = Regex(
+                    "commit [^\\s]+\n" +
+                            "Author: $username\n" +
+                            "Test message3\n" +
+                            "commit [^\\s]+\n" +
+                            "Author: $username\n" +
+                            "Test message", RegexOption.IGNORE_CASE
+            )
+            checkLogOutput(got, want, regex)
+            checkUniqueCommitHashes(got)
         } finally {
             deleteVcsDir()
+            file1.delete()
+            file2.delete()
         }
+
         return CheckResult.correct()
     }
 
@@ -106,7 +149,11 @@ class TestStage2 : StageTest<String>() {
         return CheckResult.correct()
     }
 
-    private fun prepareString(s: String) = s.trim().split(" ").filter { it.isNotBlank() }.joinToString(" ")
+    private fun prepareString(s: String) =
+            s.trim().split(" ").filter { it.isNotBlank() }.joinToString(" ")
+
+    private fun prepareLogOutput(s: String) =
+            prepareString(s).trim().split('\n').filter { it.isNotBlank() }.joinToString("\n")
 
     private fun checkHelpPageOutput(got: String) {
         val helpPage = "These are SVCS commands:\n" +
@@ -129,6 +176,38 @@ class TestStage2 : StageTest<String>() {
         }
     }
 
+
+    private fun checkLogOutput(got: String, want: String, regex: Regex) {
+        if (got.isBlank()) {
+            throw WrongAnswer(
+                    "Your program printed nothing"
+            )
+        } else if (!prepareLogOutput(got).contains(regex)) {
+            throw WrongAnswer(
+                    "Your program should output:\n\"$want\",\n" +
+                            "but printed:\n\"$got\""
+            )
+        }
+    }
+
+    private fun parseCommitHashes(logOutput: String) : List<String>{
+        val regex = Regex(
+                "commit ([^\\s]+)", RegexOption.IGNORE_CASE
+        )
+
+        return regex.findAll(logOutput).map { it.groupValues[1] }.toList()
+    }
+
+    private fun checkUniqueCommitHashes(got: String) {
+        val commitHashes = parseCommitHashes(got)
+
+        if (commitHashes.size != commitHashes.toSet().size) {
+            throw WrongAnswer(
+                    "Commit IDs are not unique"
+            )
+        }
+    }
+
     private fun checkOutputString(got: String, want: String) {
         if (got.isBlank()) {
             throw WrongAnswer(
@@ -143,6 +222,7 @@ class TestStage2 : StageTest<String>() {
         }
     }
 
+
     private fun deleteVcsDir() {
         val dir = File("vcs")
         if (dir.exists()) {
@@ -151,4 +231,3 @@ class TestStage2 : StageTest<String>() {
     }
 
 }
-
